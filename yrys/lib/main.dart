@@ -4,7 +4,8 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:http/http.dart';
 import 'package:wiki_reader/data/repositories/random_article_repository.dart';
-import 'package:wiki_reader/data/services/random_article.dart';
+import 'package:wiki_reader/data/services/random_article_services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart'
 
 void main() {
   runApp(const MainApp());
@@ -105,19 +106,43 @@ class ArticlePage extends StatelessWidget {
   }
 }
 
-class ArticleView extends StatefulWidget {
+class ArticleView extends StatelessWidget {
   const ArticleView({super.key});
-  @override
-  State<ArticleView> createState() => _ArticleViewState();
-}
 
-class _ArticleViewState extends State<ArticleView> {
-  final viewModel = AricleViewModel(ArticleModel());
   @override
-  void initState() {
-    super.initState();
-    viewModel.fetchArticle();
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: BlocBuilder<ArticleCubit, ArticleState>(
+        builder: (context, state) {
+          return switch (state) {
+            ArticleLoading() => const Center(
+                child: CircularProgressIndicator(),
+              ),
+
+            ArticleError(error: final e) => Center(
+                child: Text('Error: $e'),
+              ),
+
+            ArticleLoaded(summary: final s) => ArticlePage(
+                summary: s,
+                nextArticle: () {
+                  context.read<ArticleCubit>().updateArticle();
+                },
+              ),
+
+            ArticleInitial() => const Center(
+                child: Text('Initial'),
+              ),
+
+            _ => const Center(
+                child: Text('Something is wrong'),
+              ),
+          };
+        },
+      ),
+    );
   }
+}
 
   @override
   Widget build(BuildContext context) {
