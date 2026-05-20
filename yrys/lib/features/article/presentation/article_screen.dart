@@ -54,8 +54,35 @@ class ArticleScreen extends StatelessWidget {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Мини-викторина'),
-        content: Text('1. Как называется статья?\nОтвет: ${article.titles.normalized}\n\n2. К какой теме она относится?\nПодсказка: ${article.description ?? 'прочитай описание статьи'}\n\n3. Какой главный факт ты запомнил?'),
+        content: Text('1. Как называется статья?\nОтвет: ${article.titles.normalized}\n\n2. Какой главный факт описан?\nОтвет можно найти в тексте статьи.\n\n3. Открой Wikipedia и найди дополнительный факт.'),
         actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Готово'))],
+      ),
+    );
+  }
+
+  void _showActions(BuildContext context, WikiAppState state, Summary article) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(leading: const Icon(Icons.open_in_new_rounded), title: const Text('Открыть Wikipedia'), onTap: () { Navigator.pop(context); _openUrl(context, article.url); }),
+              ListTile(leading: Icon(state.isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded), title: Text(state.isFavorite ? 'Убрать из избранного' : 'Добавить в избранное'), onTap: () { Navigator.pop(context); state.toggleFavorite(); }),
+              ListTile(leading: const Icon(Icons.link_rounded), title: const Text('Скопировать ссылку'), onTap: () { Navigator.pop(context); _copyLink(context, article); }),
+              ListTile(leading: const Icon(Icons.ios_share_rounded), title: const Text('Поделиться'), onTap: () { Navigator.pop(context); _shareArticle(article); }),
+              ListTile(leading: const Icon(Icons.text_increase_rounded), title: const Text('Увеличить текст'), onTap: () { Navigator.pop(context); state.increaseFont(); }),
+              ListTile(leading: const Icon(Icons.text_decrease_rounded), title: const Text('Уменьшить текст'), onTap: () { Navigator.pop(context); state.decreaseFont(); }),
+              ListTile(leading: const Icon(Icons.menu_book_rounded), title: const Text('Режим чтения'), onTap: () { Navigator.pop(context); state.toggleReadingMode(); }),
+              ListTile(leading: const Icon(Icons.lightbulb_rounded), title: const Text('Случайный факт'), onTap: () { Navigator.pop(context); _showFact(context, article); }),
+              ListTile(leading: const Icon(Icons.quiz_rounded), title: const Text('Проверить себя'), onTap: () { Navigator.pop(context); _showQuiz(context, article); }),
+              ListTile(leading: const Icon(Icons.code_rounded), title: const Text('GitHub автора'), onTap: () { Navigator.pop(context); _openUrl(context, AppConstants.githubUrl); }),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -73,9 +100,9 @@ class ArticleScreen extends StatelessWidget {
               title: const Text(AppConstants.appName),
               actions: [
                 IconButton(
-                  tooltip: 'GitHub автора',
-                  onPressed: () => _openUrl(context, AppConstants.githubUrl),
-                  icon: const Icon(Icons.code_rounded),
+                  tooltip: 'Действия',
+                  onPressed: state.currentArticle == null ? null : () => _showActions(context, state, state.currentArticle!),
+                  icon: const Icon(Icons.more_vert_rounded),
                 ),
               ],
             ),
@@ -84,9 +111,7 @@ class ArticleScreen extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: isDark
-                ? const [AppColors.darkBackgroundTop, AppColors.darkBackgroundBottom]
-                : const [AppColors.lightBackgroundTop, AppColors.lightBackgroundBottom],
+            colors: isDark ? const [AppColors.darkBackgroundTop, AppColors.darkBackgroundBottom] : const [AppColors.lightBackgroundTop, AppColors.lightBackgroundBottom],
           ),
         ),
         child: SafeArea(
@@ -98,8 +123,6 @@ class ArticleScreen extends StatelessWidget {
               },
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 350),
-                switchInCurve: Curves.easeOutCubic,
-                switchOutCurve: Curves.easeInCubic,
                 child: _buildBody(context, state),
               ),
             ),
@@ -112,7 +135,7 @@ class ArticleScreen extends StatelessWidget {
   Widget _buildBody(BuildContext context, WikiAppState state) {
     if (state.isLoading) return const LoadingView(key: ValueKey('loading'));
     final error = state.error;
-    if (error != null) {
+    if (error != null && state.currentArticle == null) {
       return ErrorView(key: const ValueKey('error'), message: error.message, onRetry: state.loadArticle);
     }
     final article = state.currentArticle;
@@ -122,26 +145,12 @@ class ArticleScreen extends StatelessWidget {
     return ArticleContent(
       key: ValueKey(article.url),
       article: article,
-      history: state.history,
-      articleOfDay: state.articleOfDay,
       categories: ArticleRepository.categories,
-      similarArticles: state.similarArticles,
-      isFavorite: state.isFavorite,
-      readingFontSize: state.readingFontSize,
       readingMode: state.readingMode,
+      readingFontSize: state.readingFontSize,
       onNext: state.loadArticle,
-      onOpenWikipedia: () => _openUrl(context, article.url),
-      onOpenGithub: () => _openUrl(context, AppConstants.githubUrl),
-      onCopyLink: () => _copyLink(context, article),
-      onShare: () => _shareArticle(article),
-      onFavorite: state.toggleFavorite,
+      onMenu: () => _showActions(context, state, article),
       onCategory: state.loadCategory,
-      onOpenArticle: (item) => state.openArticle(item, addToHistory: true),
-      onShowFact: () => _showFact(context, article),
-      onQuiz: () => _showQuiz(context, article),
-      onIncreaseFont: state.increaseFont,
-      onDecreaseFont: state.decreaseFont,
-      onToggleReadingMode: state.toggleReadingMode,
     );
   }
 }
