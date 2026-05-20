@@ -1,23 +1,32 @@
 # Yrysa Wiki Reader
 
-Премиальное Flutter-приложение для просмотра случайных статей Wikipedia.
+**Yrysa Wiki Reader** — полноценное Flutter-приложение формата Wiki Discover app для изучения случайных и найденных статей Wikipedia.
 
 **Автор:** Yrysa  
 **GitHub:** https://github.com/Yrysa
 
 ## Возможности
 
-- Загрузка случайных статей Wikipedia.
-- Премиальный Material 3 интерфейс.
+- Премиальный splash screen с анимированным кольцом, `made by Yrysa` и GitHub автора.
+- Onboarding при первом запуске.
+- Случайные статьи Wikipedia.
+- Выбор языка Wikipedia: Русский, English, Қазақша.
+- Категории: Наука, Космос, IT, История, География, Люди, Животные, Игры.
+- Статья дня, которая сохраняется на текущий день.
+- Избранное с сохранением после перезапуска.
+- История последних 20 статей с оффлайн-доступом.
+- Поиск статей Wikipedia.
+- Похожие статьи.
+- Случайный факт из статьи.
+- Мини-викторина по статье.
+- Режим чтения с изменением размера текста.
+- Свайп вверх для загрузки новой статьи.
+- Копирование ссылки.
+- Поделиться статьёй через приложения телефона.
+- Статистика чтения.
+- Достижения.
+- Настройки: язык, тема, очистка истории, очистка избранного, GitHub автора, версия.
 - Светлая и тёмная тема.
-- Градиентный фон и glassmorphism-карточки.
-- Hero image статьи с fallback-состоянием.
-- Skeleton/shimmer-style загрузка.
-- Pull-to-refresh для новой статьи.
-- Кнопки: следующая статья, открыть Wikipedia, скопировать ссылку, поделиться.
-- Локальная история последних статей в памяти приложения.
-- Понятные ошибки: нет интернета, timeout, ошибка Wikipedia, статья не найдена.
-- Авторский блок `made by Yrysa` и ссылка на GitHub.
 
 ## Технологии
 
@@ -25,8 +34,9 @@
 - Dart
 - Material 3
 - http
-- url_launcher
+- shared_preferences
 - share_plus
+- url_launcher
 
 ## Запуск
 
@@ -51,35 +61,27 @@ lib/
   main.dart
   app/
     yrysa_wiki_app.dart
+    wiki_app_state.dart
+    wiki_state_scope.dart
+    main_navigation.dart
   core/
-    theme/
-      app_theme.dart
-      app_colors.dart
-      app_text_styles.dart
     constants/
-      app_constants.dart
     errors/
-      app_exception.dart
+    storage/
+    theme/
   data/
     models/
-      summary.dart
-      image_file.dart
-      titles_set.dart
-    services/
-      random_article_service.dart
     repositories/
-      article_repository.dart
+    services/
   features/
     article/
-      presentation/
-        article_screen.dart
-        widgets/
-          article_content.dart
-          article_card.dart
-          article_actions.dart
-          article_image.dart
-          error_view.dart
-          loading_view.dart
+    common/
+    favorites/
+    history/
+    onboarding/
+    search/
+    settings/
+    splash/
 ```
 
 ## Автор
