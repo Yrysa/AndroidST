@@ -2,10 +2,10 @@
 import 'package:flutter/material.dart';
 
 import '../features/article/presentation/article_screen.dart';
-import '../features/favorites/favorites_screen.dart';
-import '../features/history/history_screen.dart';
+import '../features/day/article_day_screen.dart';
+import '../features/profile/profile_screen.dart';
 import '../features/search/search_screen.dart';
-import '../features/settings/settings_screen.dart';
+import '../features/social/social_screen.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -19,10 +19,10 @@ class _MainNavigationState extends State<MainNavigation> {
 
   static const _screens = [
     ArticleScreen(),
+    ArticleDayScreen(),
     SearchScreen(),
-    FavoritesScreen(),
-    HistoryScreen(),
-    SettingsScreen(),
+    SocialScreen(),
+    ProfileScreen(),
   ];
 
   @override
@@ -34,10 +34,10 @@ class _MainNavigationState extends State<MainNavigation> {
         onDestinationSelected: (value) => setState(() => _index = value),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.explore_outlined), selectedIcon: Icon(Icons.explore), label: 'Главная'),
+          NavigationDestination(icon: Icon(Icons.today_outlined), selectedIcon: Icon(Icons.today), label: 'Статья дня'),
           NavigationDestination(icon: Icon(Icons.search_rounded), label: 'Поиск'),
-          NavigationDestination(icon: Icon(Icons.favorite_border_rounded), selectedIcon: Icon(Icons.favorite_rounded), label: 'Избранное'),
-          NavigationDestination(icon: Icon(Icons.history_rounded), label: 'История'),
-          NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: 'Настройки'),
+          NavigationDestination(icon: Icon(Icons.chat_bubble_outline_rounded), selectedIcon: Icon(Icons.chat_bubble_rounded), label: 'Соцсеть'),
+          NavigationDestination(icon: Icon(Icons.person_outline_rounded), selectedIcon: Icon(Icons.person_rounded), label: 'Профиль'),
         ],
       ),
     );
