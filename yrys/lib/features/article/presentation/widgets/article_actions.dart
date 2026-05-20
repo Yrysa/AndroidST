@@ -6,6 +6,10 @@ class ArticleActions extends StatelessWidget {
   final VoidCallback onOpenWikipedia;
   final VoidCallback onCopyLink;
   final VoidCallback onShare;
+  final VoidCallback onFavorite;
+  final VoidCallback onShowFact;
+  final VoidCallback onQuiz;
+  final bool isFavorite;
 
   const ArticleActions({
     super.key,
@@ -13,67 +17,31 @@ class ArticleActions extends StatelessWidget {
     required this.onOpenWikipedia,
     required this.onCopyLink,
     required this.onShare,
+    required this.onFavorite,
+    required this.onShowFact,
+    required this.onQuiz,
+    required this.isFavorite,
   });
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isNarrow = constraints.maxWidth < 520;
-        final children = [
-          Expanded(
-            child: FilledButton.icon(
-              onPressed: onNext,
-              icon: const Icon(Icons.shuffle_rounded),
-              label: const Text('Следующая статья'),
-            ),
-          ),
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: onOpenWikipedia,
-              icon: const Icon(Icons.open_in_new_rounded),
-              label: const Text('Открыть Wikipedia'),
-            ),
-          ),
-          IconButton.filledTonal(
-            tooltip: 'Скопировать ссылку',
-            onPressed: onCopyLink,
-            icon: const Icon(Icons.link_rounded),
-          ),
-          IconButton.filledTonal(
-            tooltip: 'Поделиться статьёй',
-            onPressed: onShare,
-            icon: const Icon(Icons.ios_share_rounded),
-          ),
-        ];
-
-        if (isNarrow) {
-          return Column(
-            children: [
-              Row(children: children.take(1).toList()),
-              const SizedBox(height: 10),
-              Row(children: children.skip(1).take(1).toList()),
-              const SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [children[2], const SizedBox(width: 10), children[3]],
-              ),
-            ],
-          );
-        }
-
-        return Row(
-          children: [
-            children[0],
-            const SizedBox(width: 10),
-            children[1],
-            const SizedBox(width: 10),
-            children[2],
-            const SizedBox(width: 10),
-            children[3],
-          ],
-        );
-      },
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      alignment: WrapAlignment.center,
+      children: [
+        FilledButton.icon(onPressed: onNext, icon: const Icon(Icons.shuffle_rounded), label: const Text('Следующая статья')),
+        OutlinedButton.icon(onPressed: onOpenWikipedia, icon: const Icon(Icons.open_in_new_rounded), label: const Text('Открыть Wikipedia')),
+        FilledButton.tonalIcon(
+          onPressed: onFavorite,
+          icon: Icon(isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded),
+          label: Text(isFavorite ? 'В избранном' : 'Добавить в избранное'),
+        ),
+        IconButton.filledTonal(tooltip: 'Скопировать ссылку', onPressed: onCopyLink, icon: const Icon(Icons.link_rounded)),
+        IconButton.filledTonal(tooltip: 'Поделиться статьёй', onPressed: onShare, icon: const Icon(Icons.ios_share_rounded)),
+        IconButton.filledTonal(tooltip: 'Случайный факт', onPressed: onShowFact, icon: const Icon(Icons.lightbulb_rounded)),
+        IconButton.filledTonal(tooltip: 'Проверить себя', onPressed: onQuiz, icon: const Icon(Icons.quiz_rounded)),
+      ],
     );
   }
 }
