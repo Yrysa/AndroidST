@@ -6,9 +6,9 @@ import '../core/storage/local_storage.dart';
 import '../core/theme/app_theme.dart';
 import '../features/onboarding/onboarding_screen.dart';
 import '../features/splash/splash_screen.dart';
+import 'main_navigation.dart';
 import 'wiki_app_state.dart';
 import 'wiki_state_scope.dart';
-import 'main_navigation.dart';
 
 class YrysaWikiApp extends StatefulWidget {
   const YrysaWikiApp({super.key});
@@ -60,7 +60,7 @@ class _YrysaWikiAppState extends State<YrysaWikiApp> {
             themeMode: state.themeMode,
             home: AnimatedSwitcher(
               duration: const Duration(milliseconds: 420),
-              child: !state.initialized || state.isLoading
+              child: !state.initialized
                   ? const SplashScreen(key: ValueKey('splash'))
                   : !state.onboardingCompleted
                       ? const OnboardingScreen(key: ValueKey('onboarding'))
