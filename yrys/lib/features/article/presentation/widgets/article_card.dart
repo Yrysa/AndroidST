@@ -6,8 +6,15 @@ import 'article_image.dart';
 
 class ArticleCard extends StatelessWidget {
   final Summary article;
+  final double fontSize;
+  final bool compact;
 
-  const ArticleCard({super.key, required this.article});
+  const ArticleCard({
+    super.key,
+    required this.article,
+    this.fontSize = 16,
+    this.compact = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -15,31 +22,35 @@ class ArticleCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(32),
-        boxShadow: [
-          BoxShadow(
-            color: colors.primary.withValues(alpha: 0.16),
-            blurRadius: 34,
-            offset: const Offset(0, 18),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(compact ? 20 : 32),
+        boxShadow: compact
+            ? null
+            : [
+                BoxShadow(
+                  color: colors.primary.withValues(alpha: 0.16),
+                  blurRadius: 34,
+                  offset: const Offset(0, 18),
+                ),
+              ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(32),
+        borderRadius: BorderRadius.circular(compact ? 20 : 32),
         child: DecoratedBox(
           decoration: BoxDecoration(
-            color: colors.surface.withValues(alpha: 0.78),
+            color: colors.surface.withValues(alpha: compact ? 0.90 : 0.78),
             border: Border.all(color: colors.outline.withValues(alpha: 0.12)),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(18),
+            padding: EdgeInsets.all(compact ? 16 : 18),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ArticleImage(imageUrl: article.imageUrl),
-                const SizedBox(height: 18),
-                const _OwnerChip(),
-                const SizedBox(height: 14),
+                if (!compact) ...[
+                  ArticleImage(imageUrl: article.imageUrl),
+                  const SizedBox(height: 18),
+                  const _OwnerChip(),
+                  const SizedBox(height: 14),
+                ],
                 Text(
                   article.titles.normalized,
                   style: Theme.of(context).textTheme.headlineMedium,
@@ -48,15 +59,13 @@ class ArticleCard extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(
                     article.description!,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: colors.primary,
-                        ),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(color: colors.primary),
                   ),
                 ],
                 const SizedBox(height: 14),
                 Text(
                   article.extract,
-                  style: Theme.of(context).textTheme.bodyLarge,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: fontSize, height: 1.65),
                 ),
               ],
             ),
