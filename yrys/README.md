@@ -1,32 +1,27 @@
 # Yrysa Wiki Reader
 
-**Yrysa Wiki Reader** — полноценное Flutter-приложение формата Wiki Discover app для изучения случайных и найденных статей Wikipedia.
+**Yrysa Wiki Reader 2.82.47** — Flutter Wiki Discover app для открытия, чтения, сохранения и обсуждения статей Wikipedia.
 
 **Автор:** Yrysa  
 **GitHub:** https://github.com/Yrysa
 
-## Возможности
+## Что реализовано
 
-- Премиальный splash screen с анимированным кольцом, `made by Yrysa` и GitHub автора.
-- Onboarding при первом запуске.
-- Случайные статьи Wikipedia.
-- Выбор языка Wikipedia: Русский, English, Қазақша.
-- Категории: Наука, Космос, IT, История, География, Люди, Животные, Игры.
-- Статья дня, которая сохраняется на текущий день.
-- Избранное с сохранением после перезапуска.
-- История последних 20 статей с оффлайн-доступом.
-- Поиск статей Wikipedia.
-- Похожие статьи.
-- Случайный факт из статьи.
-- Мини-викторина по статье.
-- Режим чтения с изменением размера текста.
-- Свайп вверх для загрузки новой статьи.
-- Копирование ссылки.
-- Поделиться статьёй через приложения телефона.
-- Статистика чтения.
-- Достижения.
-- Настройки: язык, тема, очистка истории, очистка избранного, GitHub автора, версия.
-- Светлая и тёмная тема.
+- Branded splash screen: `Yrysa Wiki Reader`, `made by Yrysa`, `github.com/Yrysa`, `Powered by Wikipedia`.
+- Чистый главный экран Discover без перегруза.
+- Действия статьи вынесены в меню `три точки` / bottom sheet.
+- История и избранное открывают полноценный экран статьи и работают оффлайн.
+- Отдельная вкладка `Статья дня`.
+- Поиск Wikipedia.
+- Выбор языка Wikipedia: RU / EN / KK.
+- MVP выбора языка приложения: RU / EN / KK в настройках.
+- Тёмная тема.
+- Настройки с версией `Yrysa Wiki Reader 2.82.47`.
+- Профиль, локальный вход, локальная регистрация и гостевой режим.
+- Локальные друзья и MVP-чат без backend.
+- Копирование ссылки, поделиться, открыть Wikipedia, GitHub автора.
+- Режим чтения и изменение размера текста.
+- Категории, статья дня, статистика, достижения.
 
 ## Технологии
 
@@ -43,44 +38,35 @@
 ```bash
 cd yrys
 flutter pub get
+dart format .
 flutter analyze
 flutter test
 flutter run
 ```
 
-Для запуска в Chrome:
+Для Chrome:
 
 ```bash
 flutter run -d chrome
 ```
 
-## Структура проекта
+## Структура
 
 ```text
 lib/
-  main.dart
   app/
-    yrysa_wiki_app.dart
-    wiki_app_state.dart
-    wiki_state_scope.dart
-    main_navigation.dart
   core/
-    constants/
-    errors/
-    storage/
-    theme/
   data/
-    models/
-    repositories/
-    services/
   features/
     article/
-    common/
+    day/
     favorites/
     history/
-    onboarding/
+    profile/
+    saved/
     search/
     settings/
+    social/
     splash/
 ```
 
