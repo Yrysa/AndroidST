@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/wiki_state_scope.dart';
+import '../article/presentation/open_article_detail.dart';
 import '../common/article_tile.dart';
 
 class HistoryScreen extends StatelessWidget {
@@ -12,15 +13,7 @@ class HistoryScreen extends StatelessWidget {
     final state = WikiStateScope.of(context);
     final items = state.history;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('История'),
-        actions: [
-          IconButton(
-            onPressed: items.isEmpty ? null : state.clearHistory,
-            icon: const Icon(Icons.delete_sweep_rounded),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('История'), actions: [IconButton(onPressed: items.isEmpty ? null : state.clearHistory, icon: const Icon(Icons.delete_sweep_rounded))]),
       body: items.isEmpty
           ? const Center(child: Text('История пока пустая'))
           : ListView.builder(
@@ -28,10 +21,7 @@ class HistoryScreen extends StatelessWidget {
               itemCount: items.length,
               itemBuilder: (context, index) {
                 final article = items[index];
-                return ArticleTile(
-                  article: article,
-                  onTap: () => state.openArticle(article, addToHistory: false),
-                );
+                return ArticleTile(article: article, onTap: () => openArticleDetail(context, article));
               },
             ),
     );
