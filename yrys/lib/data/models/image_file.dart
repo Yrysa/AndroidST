@@ -14,5 +14,13 @@ class ImageFile {
     );
   }
 
+  Map<String, Object?> toJson() {
+    return {
+      'source': source,
+      'width': width,
+      'height': height,
+    };
+  }
+
   bool get isValid => source.isNotEmpty;
 }
