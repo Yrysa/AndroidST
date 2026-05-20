@@ -21,4 +21,12 @@ class TitlesSet {
       display: display ?? normalized ?? canonical ?? 'Без названия',
     );
   }
+
+  Map<String, Object?> toJson() {
+    return {
+      'canonical': canonical,
+      'normalized': normalized,
+      'display': display,
+    };
+  }
 }
