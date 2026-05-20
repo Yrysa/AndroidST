@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/wiki_state_scope.dart';
+import '../article/presentation/open_article_detail.dart';
 import '../common/article_tile.dart';
 
 class SearchScreen extends StatefulWidget {
@@ -57,10 +58,7 @@ class _SearchScreenState extends State<SearchScreen> {
           if (_searched && !_loading && state.searchResults.isEmpty) const _EmptyState(text: 'Ничего не найдено. Попробуй другой запрос.'),
           if (!_loading)
             for (final article in state.searchResults)
-              ArticleTile(
-                article: article,
-                onTap: () => state.openArticle(article, addToHistory: true),
-              ),
+              ArticleTile(article: article, onTap: () => openArticleDetail(context, article)),
         ],
       ),
     );
