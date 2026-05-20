@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../app/wiki_app_state.dart';
+import '../../../app/wiki_state_scope.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/errors/app_exception.dart';
 import '../../../core/theme/app_colors.dart';
@@ -13,96 +15,70 @@ import 'widgets/article_content.dart';
 import 'widgets/error_view.dart';
 import 'widgets/loading_view.dart';
 
-class ArticleScreen extends StatefulWidget {
+class ArticleScreen extends StatelessWidget {
   const ArticleScreen({super.key});
 
-  @override
-  State<ArticleScreen> createState() => _ArticleScreenState();
-}
-
-class _ArticleScreenState extends State<ArticleScreen> {
-  final ArticleRepository _repository = ArticleRepository();
-  Summary? _article;
-  AppException? _error;
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadArticle();
-  }
-
-  Future<void> _loadArticle() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    try {
-      final article = await _repository.getRandomArticle();
-      if (!mounted) return;
-      setState(() {
-        _article = article;
-        _isLoading = false;
-      });
-    } on AppException catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _error = error;
-        _isLoading = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _error = AppException.unknown();
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _openUrl(String url) async {
+  Future<void> _openUrl(BuildContext context, String url) async {
     final uri = Uri.tryParse(url);
     if (uri == null) return;
-
     final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!opened && mounted) {
-      _showSnack('Не удалось открыть ссылку.');
-    }
+    if (!opened && context.mounted) _showSnack(context, 'Не удалось открыть ссылку.');
   }
 
-  Future<void> _copyLink() async {
-    final url = _article?.url;
-    if (url == null || url.isEmpty) return;
-    await Clipboard.setData(ClipboardData(text: url));
-    if (mounted) _showSnack('Ссылка скопирована.');
+  Future<void> _copyLink(BuildContext context, Summary article) async {
+    await Clipboard.setData(ClipboardData(text: article.url));
+    if (context.mounted) _showSnack(context, 'Ссылка скопирована');
   }
 
-  Future<void> _shareArticle() async {
-    final article = _article;
-    if (article == null || article.url.isEmpty) return;
-    await Share.share('${article.titles.normalized}\n${article.url}');
+  Future<void> _shareArticle(Summary article) async {
+    await Share.share('Посмотри интересную статью: ${article.titles.normalized} — ${article.url}');
   }
 
-  void _showSnack(String message) {
+  void _showSnack(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _showFact(BuildContext context, Summary article) {
+    showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Случайный факт'),
+        content: Text(article.shortFact),
+        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Понятно'))],
+      ),
+    );
+  }
+
+  void _showQuiz(BuildContext context, Summary article) {
+    showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Мини-викторина'),
+        content: Text('1. Как называется статья?\nОтвет: ${article.titles.normalized}\n\n2. К какой теме она относится?\nПодсказка: ${article.description ?? 'прочитай описание статьи'}\n\n3. Какой главный факт ты запомнил?'),
+        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Готово'))],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final state = WikiStateScope.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        title: const Text(AppConstants.appName),
-        actions: [
-          IconButton(
-            tooltip: 'GitHub автора',
-            onPressed: () => _openUrl(AppConstants.githubUrl),
-            icon: const Icon(Icons.code_rounded),
-          ),
-        ],
-      ),
+      appBar: state.readingMode
+          ? null
+          : AppBar(
+              title: const Text(AppConstants.appName),
+              actions: [
+                IconButton(
+                  tooltip: 'GitHub автора',
+                  onPressed: () => _openUrl(context, AppConstants.githubUrl),
+                  icon: const Icon(Icons.code_rounded),
+                ),
+              ],
+            ),
       body: DecoratedBox(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -115,12 +91,17 @@ class _ArticleScreenState extends State<ArticleScreen> {
         ),
         child: SafeArea(
           child: RefreshIndicator(
-            onRefresh: _loadArticle,
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 350),
-              switchInCurve: Curves.easeOutCubic,
-              switchOutCurve: Curves.easeInCubic,
-              child: _buildBody(),
+            onRefresh: state.loadArticle,
+            child: GestureDetector(
+              onVerticalDragEnd: (details) {
+                if ((details.primaryVelocity ?? 0) < -260) state.loadArticle();
+              },
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 350),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                child: _buildBody(context, state),
+              ),
             ),
           ),
         ),
@@ -128,38 +109,39 @@ class _ArticleScreenState extends State<ArticleScreen> {
     );
   }
 
-  Widget _buildBody() {
-    if (_isLoading) {
-      return const LoadingView(key: ValueKey('loading'));
-    }
-
-    final error = _error;
+  Widget _buildBody(BuildContext context, WikiAppState state) {
+    if (state.isLoading) return const LoadingView(key: ValueKey('loading'));
+    final error = state.error;
     if (error != null) {
-      return ErrorView(
-        key: const ValueKey('error'),
-        message: error.message,
-        onRetry: _loadArticle,
-      );
+      return ErrorView(key: const ValueKey('error'), message: error.message, onRetry: state.loadArticle);
     }
-
-    final article = _article;
+    final article = state.currentArticle;
     if (article == null) {
-      return ErrorView(
-        key: const ValueKey('not-found'),
-        message: AppException.notFound().message,
-        onRetry: _loadArticle,
-      );
+      return ErrorView(key: const ValueKey('not-found'), message: AppException.notFound().message, onRetry: state.loadArticle);
     }
-
     return ArticleContent(
       key: ValueKey(article.url),
       article: article,
-      history: _repository.history,
-      onNext: _loadArticle,
-      onOpenWikipedia: () => _openUrl(article.url),
-      onOpenGithub: () => _openUrl(AppConstants.githubUrl),
-      onCopyLink: _copyLink,
-      onShare: _shareArticle,
+      history: state.history,
+      articleOfDay: state.articleOfDay,
+      categories: ArticleRepository.categories,
+      similarArticles: state.similarArticles,
+      isFavorite: state.isFavorite,
+      readingFontSize: state.readingFontSize,
+      readingMode: state.readingMode,
+      onNext: state.loadArticle,
+      onOpenWikipedia: () => _openUrl(context, article.url),
+      onOpenGithub: () => _openUrl(context, AppConstants.githubUrl),
+      onCopyLink: () => _copyLink(context, article),
+      onShare: () => _shareArticle(article),
+      onFavorite: state.toggleFavorite,
+      onCategory: state.loadCategory,
+      onOpenArticle: (item) => state.openArticle(item, addToHistory: true),
+      onShowFact: () => _showFact(context, article),
+      onQuiz: () => _showQuiz(context, article),
+      onIncreaseFont: state.increaseFont,
+      onDecreaseFont: state.decreaseFont,
+      onToggleReadingMode: state.toggleReadingMode,
     );
   }
 }
