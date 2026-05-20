@@ -4,32 +4,42 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
-import '../../summary.dart';
+import '../../core/constants/app_constants.dart';
+import '../../core/errors/app_exception.dart';
 
 class RandomArticleService {
   final http.Client _client;
 
   RandomArticleService({http.Client? client}) : _client = client ?? http.Client();
 
-  Future<Summary> fetchRandomArticle() async {
-    final uri = Uri.https(
-      'ru.wikipedia.org',
-      '/api/rest_v1/page/random/summary',
-    );
+  Future<Map<String, Object?>> fetchRandomArticleJson() async {
+    final uri = Uri.https(AppConstants.wikipediaHost, AppConstants.randomArticlePath);
 
     try {
-      final response = await _client.get(uri);
+      final response = await _client.get(uri).timeout(AppConstants.apiTimeout);
 
-      if (response.statusCode != 200) {
-        throw HttpException('Wikipedia returned status ${response.statusCode}');
+      if (response.statusCode == 404) {
+        throw AppException.notFound();
+      }
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw AppException.server(response.statusCode);
       }
 
-      final jsonMap = jsonDecode(response.body) as Map<String, Object?>;
-      return Summary.fromJson(jsonMap);
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, Object?>) {
+        throw AppException.invalidData();
+      }
+      return decoded;
+    } on AppException {
+      rethrow;
     } on SocketException {
-      throw const SocketException('Нет подключения к интернету');
-    } on FormatException catch (error) {
-      throw FormatException('Не удалось прочитать ответ Wikipedia: $error');
+      throw AppException.noInternet();
+    } on TimeoutException {
+      throw AppException.timeout();
+    } on FormatException {
+      throw AppException.invalidData();
+    } catch (_) {
+      throw AppException.unknown();
     }
   }
 }
