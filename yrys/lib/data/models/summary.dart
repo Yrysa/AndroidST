@@ -37,12 +37,20 @@ class Summary {
 
   bool get hasUrl => url.isNotEmpty;
 
+  String get shortFact {
+    final text = extract.trim();
+    if (text.isEmpty) return 'Интересный факт пока недоступен.';
+    final dotIndex = text.indexOf('.');
+    if (dotIndex > 40 && dotIndex < 180) return text.substring(0, dotIndex + 1);
+    if (text.length <= 180) return text;
+    return '${text.substring(0, 177)}...';
+  }
+
   factory Summary.fromJson(Map<String, Object?> json) {
     final titlesJson = json['titles'];
     final contentUrls = json['content_urls'];
     final desktop = contentUrls is Map<String, Object?> ? contentUrls['desktop'] : null;
     final pageUrl = desktop is Map<String, Object?> ? desktop['page'] as String? : null;
-
     final thumbnailJson = json['thumbnail'];
     final originalImageJson = json['originalimage'];
 
@@ -55,10 +63,27 @@ class Summary {
       extractHtml: json['extract_html'] as String? ?? '',
       lang: json['lang'] as String? ?? 'ru',
       dir: json['dir'] as String? ?? 'ltr',
-      url: pageUrl ?? '',
+      url: pageUrl ?? json['url'] as String? ?? '',
       description: json['description'] as String?,
       thumbnail: thumbnailJson is Map<String, Object?> ? ImageFile.fromJson(thumbnailJson) : null,
       originalImage: originalImageJson is Map<String, Object?> ? ImageFile.fromJson(originalImageJson) : null,
     );
+  }
+
+  factory Summary.fromStorage(Map<String, Object?> json) => Summary.fromJson(json);
+
+  Map<String, Object?> toJson() {
+    return {
+      'titles': titles.toJson(),
+      'pageid': pageId,
+      'extract': extract,
+      'extract_html': extractHtml,
+      'lang': lang,
+      'dir': dir,
+      'url': url,
+      'description': description,
+      'thumbnail': thumbnail?.toJson(),
+      'originalimage': originalImage?.toJson(),
+    };
   }
 }
