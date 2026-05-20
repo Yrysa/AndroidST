@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/wiki_state_scope.dart';
+import '../article/presentation/article_detail_screen.dart';
 import '../common/article_tile.dart';
 
 class FavoritesScreen extends StatelessWidget {
@@ -30,7 +31,9 @@ class FavoritesScreen extends StatelessWidget {
                 final article = items[index];
                 return ArticleTile(
                   article: article,
-                  onTap: () => state.openArticle(article, addToHistory: true),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => ArticleDetailScreen(article: article)),
+                  ),
                   onDelete: () => state.toggleFavorite(article),
                 );
               },
