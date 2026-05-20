@@ -20,9 +20,7 @@ class WikiLanguage {
     WikiLanguage(title: 'Қазақша', host: 'kk.wikipedia.org', code: 'kk'),
   ];
 
-  static WikiLanguage byHost(String host) {
-    return values.firstWhere((item) => item.host == host, orElse: () => values.first);
-  }
+  static WikiLanguage byHost(String host) => values.firstWhere((item) => item.host == host, orElse: () => values.first);
 }
 
 class Achievement {
@@ -62,13 +60,12 @@ class WikiAppState extends ChangeNotifier {
   String lastArticleTitle = '';
 
   String get host => language.host;
-  bool get isDark => themeMode == ThemeMode.dark;
   bool get isFavorite => currentArticle != null && favorites.any((item) => item.url == currentArticle!.url);
 
   Future<void> initialize() async {
     onboardingCompleted = storage.getBool(LocalStorage.onboardingKey);
     language = WikiLanguage.byHost(storage.getString(LocalStorage.languageKey, fallback: WikiLanguage.values.first.host));
-    themeMode = storage.getString(LocalStorage.themeKey, fallback: 'system') == 'dark' ? ThemeMode.dark : ThemeMode.light;
+    themeMode = storage.getString(LocalStorage.themeKey, fallback: 'light') == 'dark' ? ThemeMode.dark : ThemeMode.light;
     reminderEnabled = storage.getBool(LocalStorage.reminderKey);
     totalRead = storage.getInt(LocalStorage.totalReadKey);
     todayRead = storage.getInt(LocalStorage.todayReadKey);
@@ -77,9 +74,9 @@ class WikiAppState extends ChangeNotifier {
     _loadLists();
     _rollTodayIfNeeded();
     _updateStreak();
+    await loadInitialArticle();
     initialized = true;
     notifyListeners();
-    await loadInitialArticle();
   }
 
   Future<void> completeOnboarding() async {
