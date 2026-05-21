@@ -10,6 +10,7 @@ import '../../core/constants/app_constants.dart';
 import '../favorites/favorites_screen.dart';
 import '../history/history_screen.dart';
 import '../settings/settings_screen.dart';
+import '../social/social_storage.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -23,6 +24,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   static const _sessionKey = 'wiki_session_email';
 
   Map<String, String> _user = _guestUser();
+  int _sentArticles = 0;
 
   static Map<String, String> _guestUser() => {
         'id': 'guest',
@@ -39,6 +41,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _loadUser();
+    _loadSocialStats();
+  }
+
+  Future<void> _loadSocialStats() async {
+    final count = await SocialStorage.sentArticlesCount();
+    if (mounted) setState(() => _sentArticles = count);
   }
 
   Future<void> _loadUser() async {
@@ -70,9 +78,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _openAuth({required bool register}) {
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => AuthScreen(register: register, onDone: _saveUser),
-    ));
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => AuthScreen(register: register, onDone: _saveUser)));
   }
 
   void _editProfile() {
@@ -104,6 +110,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Text(_user['email'] ?? '', style: Theme.of(context).textTheme.bodyMedium),
                 const SizedBox(height: 8),
                 Text(_user['status'] ?? '', textAlign: TextAlign.center),
+                const SizedBox(height: 6),
+                Text('Регистрация: ${(_user['createdAt'] ?? '').split('T').first}'),
                 const SizedBox(height: 14),
                 Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.center, children: [
                   FilledButton.icon(onPressed: _editProfile, icon: const Icon(Icons.edit_rounded), label: const Text('Редактировать')),
@@ -115,9 +123,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          _StatsCard(total: state.totalRead, today: state.todayRead, favs: state.favorites.length, streak: state.streak, last: state.lastArticleTitle),
+          _StatsCard(total: state.totalRead, today: state.todayRead, favs: state.favorites.length, streak: state.streak, sent: _sentArticles, last: state.lastArticleTitle),
           const SizedBox(height: 12),
-          _AchievementsCard(total: state.totalRead, favs: state.favorites.length, streak: state.streak),
+          _AchievementsCard(total: state.totalRead, favs: state.favorites.length, streak: state.streak, sent: _sentArticles),
           const SizedBox(height: 12),
           ListTile(leading: const Icon(Icons.favorite_rounded), title: const Text('Избранное'), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FavoritesScreen()))),
           ListTile(leading: const Icon(Icons.history_rounded), title: const Text('История'), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HistoryScreen()))),
@@ -170,16 +178,7 @@ class _AuthScreenState extends State<AuthScreen> {
     final nick = _nick.text.trim();
 
     if (guest) {
-      widget.onDone({
-        'id': 'guest',
-        'nick': 'Гость',
-        'email': 'guest@local.app',
-        'password': '',
-        'status': 'Гостевой режим Wiki Discover',
-        'avatar': '🧠',
-        'createdAt': DateTime.now().toIso8601String(),
-        'guest': 'true',
-      });
+      widget.onDone({'id': 'guest', 'nick': 'Гость', 'email': 'guest@local.app', 'password': '', 'status': 'Гостевой режим Wiki Discover', 'avatar': '🧠', 'createdAt': DateTime.now().toIso8601String(), 'guest': 'true'});
       if (mounted) Navigator.pop(context);
       return;
     }
@@ -192,16 +191,7 @@ class _AuthScreenState extends State<AuthScreen> {
       if (nick.isEmpty) return _error('Введите ник');
       if (password != _confirm.text) return _error('Пароли не совпадают');
       if (saved != null && saved['email'] == email) return _error('Пользователь с таким email уже есть');
-      widget.onDone({
-        'id': DateTime.now().millisecondsSinceEpoch.toString(),
-        'nick': nick,
-        'email': email,
-        'password': password,
-        'status': 'Изучаю мир через Wikipedia',
-        'avatar': '🚀',
-        'createdAt': DateTime.now().toIso8601String(),
-        'guest': 'false',
-      });
+      widget.onDone({'id': DateTime.now().millisecondsSinceEpoch.toString(), 'nick': nick, 'email': email, 'password': password, 'status': 'Изучаю мир через Wikipedia', 'avatar': '🚀', 'createdAt': DateTime.now().toIso8601String(), 'guest': 'false'});
     } else {
       if (saved == null || saved['email'] != email || saved['password'] != password) return _error('Неверный email или пароль');
       widget.onDone(saved);
@@ -284,8 +274,9 @@ class _StatsCard extends StatelessWidget {
   final int today;
   final int favs;
   final int streak;
+  final int sent;
   final String last;
-  const _StatsCard({required this.total, required this.today, required this.favs, required this.streak, required this.last});
+  const _StatsCard({required this.total, required this.today, required this.favs, required this.streak, required this.sent, required this.last});
 
   @override
   Widget build(BuildContext context) {
@@ -295,7 +286,9 @@ class _StatsCard extends StatelessWidget {
       Text('Всего прочитано: $total'),
       Text('Сегодня: $today'),
       Text('Избранное: $favs'),
+      Text('Отправлено друзьям: $sent'),
       Text('Серия дней: $streak'),
+      Text('Любимая категория: появится после большего количества статей'),
       Text('Последняя статья: ${last.isEmpty ? '—' : last}'),
     ])));
   }
@@ -305,21 +298,32 @@ class _AchievementsCard extends StatelessWidget {
   final int total;
   final int favs;
   final int streak;
-  const _AchievementsCard({required this.total, required this.favs, required this.streak});
+  final int sent;
+  const _AchievementsCard({required this.total, required this.favs, required this.streak, required this.sent});
 
   @override
   Widget build(BuildContext context) {
     final items = [
-      ('Первая статья', total >= 1),
-      ('Любознательный — 10 статей', total >= 10),
-      ('Исследователь — 50 статей', total >= 50),
-      ('Коллекционер — 10 избранных', favs >= 10),
-      ('Серия — 3 дня подряд', streak >= 3),
-      ('Wiki Master — 100 статей', total >= 100),
+      ('Первая статья', 'Открыл первую статью', total >= 1),
+      ('Любознательный', 'Прочитал 10 статей', total >= 10),
+      ('Исследователь', 'Прочитал 50 статей', total >= 50),
+      ('Коллекционер', 'Сохранил 10 статей', favs >= 10),
+      ('Серия', 'Заходил 3 дня подряд', streak >= 3),
+      ('Wiki Master', 'Прочитал 100 статей', total >= 100),
+      ('Социальный читатель', 'Отправил 5 статей друзьям', sent >= 5),
+      ('Наставник', 'Отправил 10 статей друзьям', sent >= 10),
     ];
     return Card(elevation: 0, child: Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text('Достижения', style: Theme.of(context).textTheme.titleMedium),
-      for (final item in items) ListTile(contentPadding: EdgeInsets.zero, leading: Icon(item.$2 ? Icons.emoji_events_rounded : Icons.lock_outline_rounded), title: Text(item.$1)),
+      const SizedBox(height: 8),
+      Wrap(spacing: 8, runSpacing: 8, children: [
+        for (final item in items)
+          Chip(
+            avatar: Icon(item.$3 ? Icons.emoji_events_rounded : Icons.lock_outline_rounded, size: 18),
+            label: Text('${item.$1}\n${item.$2}'),
+            backgroundColor: item.$3 ? Theme.of(context).colorScheme.primaryContainer : Theme.of(context).colorScheme.surfaceContainerHighest,
+          ),
+      ]),
     ])));
   }
 }
