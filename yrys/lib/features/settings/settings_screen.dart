@@ -34,6 +34,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _appLanguage = value);
   }
 
+  Future<void> _clearLocalData(WikiAppState state) async {
+    await state.clearHistory();
+    await state.clearFavorites();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('wiki_friends');
+    final chatKeys = prefs.getKeys().where((key) => key.startsWith('chat_')).toList();
+    for (final key in chatKeys) {
+      await prefs.remove(key);
+    }
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Локальные данные очищены')));
+    }
+  }
+
   Future<void> _openGithub() async {
     await launchUrl(Uri.parse(AppConstants.githubUrl), mode: LaunchMode.externalApplication);
   }
@@ -46,13 +60,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(18),
         children: [
-          Text('Профиль и приложение', style: Theme.of(context).textTheme.titleMedium),
+          Text('Язык приложения', style: Theme.of(context).textTheme.titleMedium),
           RadioListTile<String>(title: const Text('Русский'), value: 'ru', groupValue: _appLanguage, onChanged: (v) => _setAppLanguage(v!)),
           RadioListTile<String>(title: const Text('English'), value: 'en', groupValue: _appLanguage, onChanged: (v) => _setAppLanguage(v!)),
           RadioListTile<String>(title: const Text('Қазақша'), value: 'kk', groupValue: _appLanguage, onChanged: (v) => _setAppLanguage(v!)),
           const Divider(height: 28),
           Text('Язык Wikipedia', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
           for (final language in WikiLanguage.values)
             RadioListTile<WikiLanguage>(
               title: Text(language.title),
@@ -76,65 +89,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onChanged: state.setReminder,
           ),
           const Divider(height: 28),
-          _StatsCard(state: state),
-          const SizedBox(height: 12),
-          _AchievementsCard(state: state),
-          const SizedBox(height: 12),
           ListTile(leading: const Icon(Icons.history_rounded), title: const Text('Очистить историю'), onTap: state.clearHistory),
           ListTile(leading: const Icon(Icons.favorite_rounded), title: const Text('Очистить избранное'), onTap: state.clearFavorites),
+          ListTile(leading: const Icon(Icons.cleaning_services_rounded), title: const Text('Очистить локальные данные'), onTap: () => _clearLocalData(state)),
           ListTile(leading: const Icon(Icons.code_rounded), title: const Text('Открыть GitHub автора'), subtitle: const Text(AppConstants.githubUrl), onTap: _openGithub),
-          const AboutListTile(icon: Icon(Icons.info_outline_rounded), applicationName: AppConstants.appName, applicationVersion: '2.82.47', applicationLegalese: 'made by Yrysa'),
+          const AboutListTile(
+            icon: Icon(Icons.info_outline_rounded),
+            applicationName: AppConstants.appName,
+            applicationVersion: '2.82.47',
+            applicationLegalese: 'made by Yrysa • Powered by Wikipedia',
+          ),
+          const Padding(
+            padding: EdgeInsets.all(16),
+            child: Text('Версия: Yrysa Wiki Reader 2.82.47', textAlign: TextAlign.center),
+          ),
         ],
-      ),
-    );
-  }
-}
-
-class _StatsCard extends StatelessWidget {
-  final WikiAppState state;
-  const _StatsCard({required this.state});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Статистика чтения', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 10),
-          Text('Всего просмотрено: ${state.totalRead}'),
-          Text('Сегодня просмотрено: ${state.todayRead}'),
-          Text('В избранном: ${state.favorites.length}'),
-          Text('Серия дней: ${state.streak}'),
-          Text('Последняя статья: ${state.lastArticleTitle.isEmpty ? '—' : state.lastArticleTitle}'),
-        ]),
-      ),
-    );
-  }
-}
-
-class _AchievementsCard extends StatelessWidget {
-  final WikiAppState state;
-  const _AchievementsCard({required this.state});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Достижения', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 10),
-          for (final achievement in state.achievements)
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(achievement.unlocked ? Icons.emoji_events_rounded : Icons.lock_outline_rounded),
-              title: Text(achievement.title),
-              subtitle: Text(achievement.description),
-            ),
-        ]),
       ),
     );
   }
