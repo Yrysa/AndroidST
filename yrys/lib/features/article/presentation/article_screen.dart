@@ -63,27 +63,39 @@ class ArticleScreen extends StatelessWidget {
   void _showActions(BuildContext context, WikiAppState state, Summary article) {
     showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
       showDragHandle: true,
-      builder: (_) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(leading: const Icon(Icons.open_in_new_rounded), title: const Text('Открыть Wikipedia'), onTap: () { Navigator.pop(context); _openUrl(context, article.url); }),
-              ListTile(leading: Icon(state.isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded), title: Text(state.isFavorite ? 'Убрать из избранного' : 'Добавить в избранное'), onTap: () { Navigator.pop(context); state.toggleFavorite(); }),
-              ListTile(leading: const Icon(Icons.link_rounded), title: const Text('Скопировать ссылку'), onTap: () { Navigator.pop(context); _copyLink(context, article); }),
-              ListTile(leading: const Icon(Icons.ios_share_rounded), title: const Text('Поделиться'), onTap: () { Navigator.pop(context); _shareArticle(article); }),
-              ListTile(leading: const Icon(Icons.text_increase_rounded), title: const Text('Увеличить текст'), onTap: () { Navigator.pop(context); state.increaseFont(); }),
-              ListTile(leading: const Icon(Icons.text_decrease_rounded), title: const Text('Уменьшить текст'), onTap: () { Navigator.pop(context); state.decreaseFont(); }),
-              ListTile(leading: const Icon(Icons.menu_book_rounded), title: const Text('Режим чтения'), onTap: () { Navigator.pop(context); state.toggleReadingMode(); }),
-              ListTile(leading: const Icon(Icons.lightbulb_rounded), title: const Text('Случайный факт'), onTap: () { Navigator.pop(context); _showFact(context, article); }),
-              ListTile(leading: const Icon(Icons.quiz_rounded), title: const Text('Проверить себя'), onTap: () { Navigator.pop(context); _showQuiz(context, article); }),
-              ListTile(leading: const Icon(Icons.code_rounded), title: const Text('GitHub автора'), onTap: () { Navigator.pop(context); _openUrl(context, AppConstants.githubUrl); }),
-            ],
+      builder: (sheetContext) {
+        return SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: MediaQuery.of(sheetContext).size.height * 0.86),
+            child: SingleChildScrollView(
+              padding: EdgeInsets.only(
+                left: 12,
+                right: 12,
+                bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 12,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ListTile(leading: const Icon(Icons.open_in_new_rounded), title: const Text('Открыть Wikipedia'), onTap: () { Navigator.pop(sheetContext); _openUrl(context, article.url); }),
+                  ListTile(leading: Icon(state.isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded), title: Text(state.isFavorite ? 'Убрать из избранного' : 'Добавить в избранное'), onTap: () { Navigator.pop(sheetContext); state.toggleFavorite(); }),
+                  ListTile(leading: const Icon(Icons.link_rounded), title: const Text('Скопировать ссылку'), onTap: () { Navigator.pop(sheetContext); _copyLink(context, article); }),
+                  ListTile(leading: const Icon(Icons.ios_share_rounded), title: const Text('Поделиться'), onTap: () { Navigator.pop(sheetContext); _shareArticle(article); }),
+                  ListTile(leading: const Icon(Icons.text_increase_rounded), title: const Text('Увеличить текст'), onTap: () { Navigator.pop(sheetContext); state.increaseFont(); }),
+                  ListTile(leading: const Icon(Icons.text_decrease_rounded), title: const Text('Уменьшить текст'), onTap: () { Navigator.pop(sheetContext); state.decreaseFont(); }),
+                  ListTile(leading: const Icon(Icons.menu_book_rounded), title: const Text('Режим чтения'), onTap: () { Navigator.pop(sheetContext); state.toggleReadingMode(); }),
+                  ListTile(leading: const Icon(Icons.group_rounded), title: const Text('Отправить другу'), onTap: () { Navigator.pop(sheetContext); _showSnack(context, 'Открой вкладку Соцсеть и отправь ссылку в чат.'); }),
+                  ListTile(leading: const Icon(Icons.lightbulb_rounded), title: const Text('Случайный факт'), onTap: () { Navigator.pop(sheetContext); _showFact(context, article); }),
+                  ListTile(leading: const Icon(Icons.quiz_rounded), title: const Text('Проверить себя'), onTap: () { Navigator.pop(sheetContext); _showQuiz(context, article); }),
+                  ListTile(leading: const Icon(Icons.code_rounded), title: const Text('GitHub автора'), onTap: () { Navigator.pop(sheetContext); _openUrl(context, AppConstants.githubUrl); }),
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -98,13 +110,6 @@ class ArticleScreen extends StatelessWidget {
           ? null
           : AppBar(
               title: const Text(AppConstants.appName),
-              actions: [
-                IconButton(
-                  tooltip: 'Действия',
-                  onPressed: state.currentArticle == null ? null : () => _showActions(context, state, state.currentArticle!),
-                  icon: const Icon(Icons.more_vert_rounded),
-                ),
-              ],
             ),
       body: DecoratedBox(
         decoration: BoxDecoration(
