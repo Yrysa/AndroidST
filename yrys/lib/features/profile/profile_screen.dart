@@ -19,13 +19,21 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  Map<String, String> _user = const {
-    'nick': 'Yrysa Guest',
-    'email': 'guest@local.app',
-    'status': 'Discover knowledge beautifully',
-    'avatar': '🧠',
-    'guest': 'true',
-  };
+  static const _userKey = 'wiki_user';
+  static const _sessionKey = 'wiki_session_email';
+
+  Map<String, String> _user = _guestUser();
+
+  static Map<String, String> _guestUser() => {
+        'id': 'guest',
+        'nick': 'Гость',
+        'email': 'guest@local.app',
+        'password': '',
+        'status': 'Гостевой режим Wiki Discover',
+        'avatar': '🧠',
+        'createdAt': DateTime.now().toIso8601String(),
+        'guest': 'true',
+      };
 
   @override
   void initState() {
@@ -35,27 +43,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _loadUser() async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString('wiki_user');
-    if (raw != null) {
-      final data = jsonDecode(raw);
-      if (data is Map) {
-        setState(() => _user = data.map((key, value) => MapEntry(key.toString(), value.toString())));
-      }
+    final raw = prefs.getString(_userKey);
+    final session = prefs.getString(_sessionKey);
+    if (raw == null || session == null) {
+      setState(() => _user = _guestUser());
+      return;
+    }
+    final data = jsonDecode(raw);
+    if (data is Map) {
+      final user = data.map((key, value) => MapEntry(key.toString(), value.toString()));
+      if (user['email'] == session) setState(() => _user = user);
     }
   }
 
   Future<void> _saveUser(Map<String, String> user) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('wiki_user', jsonEncode(user));
+    await prefs.setString(_userKey, jsonEncode(user));
+    await prefs.setString(_sessionKey, user['email'] ?? 'guest@local.app');
     setState(() => _user = user);
+  }
+
+  Future<void> _logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_sessionKey);
+    setState(() => _user = _guestUser());
   }
 
   void _openAuth({required bool register}) {
     Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => AuthScreen(
-        register: register,
-        onDone: _saveUser,
-      ),
+      builder: (_) => AuthScreen(register: register, onDone: _saveUser),
     ));
   }
 
@@ -70,6 +86,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final state = WikiStateScope.of(context);
+    final isGuest = _user['guest'] == 'true';
     return Scaffold(
       appBar: AppBar(title: const Text('Профиль')),
       body: ListView(
@@ -83,35 +100,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(children: [
                 CircleAvatar(radius: 42, child: Text(_user['avatar'] ?? '🧠', style: const TextStyle(fontSize: 34))),
                 const SizedBox(height: 12),
-                Text(_user['nick'] ?? 'Yrysa Guest', style: Theme.of(context).textTheme.headlineMedium, textAlign: TextAlign.center),
+                Text(_user['nick'] ?? 'Гость', style: Theme.of(context).textTheme.headlineMedium, textAlign: TextAlign.center),
                 Text(_user['email'] ?? '', style: Theme.of(context).textTheme.bodyMedium),
                 const SizedBox(height: 8),
                 Text(_user['status'] ?? '', textAlign: TextAlign.center),
                 const SizedBox(height: 14),
                 Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.center, children: [
                   FilledButton.icon(onPressed: _editProfile, icon: const Icon(Icons.edit_rounded), label: const Text('Редактировать')),
-                  OutlinedButton.icon(onPressed: () => _openAuth(register: false), icon: const Icon(Icons.login_rounded), label: const Text('Войти')),
-                  OutlinedButton.icon(onPressed: () => _openAuth(register: true), icon: const Icon(Icons.person_add_rounded), label: const Text('Регистрация')),
+                  if (isGuest) OutlinedButton.icon(onPressed: () => _openAuth(register: false), icon: const Icon(Icons.login_rounded), label: const Text('Войти')),
+                  if (isGuest) OutlinedButton.icon(onPressed: () => _openAuth(register: true), icon: const Icon(Icons.person_add_rounded), label: const Text('Регистрация')),
+                  if (!isGuest) OutlinedButton.icon(onPressed: _logout, icon: const Icon(Icons.logout_rounded), label: const Text('Выйти')),
                 ]),
               ]),
             ),
           ),
           const SizedBox(height: 12),
-          Card(
-            elevation: 0,
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Статистика', style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 8),
-                Text('Всего прочитано: ${state.totalRead}'),
-                Text('Сегодня: ${state.todayRead}'),
-                Text('Избранное: ${state.favorites.length}'),
-                Text('Серия дней: ${state.streak}'),
-                Text('Последняя статья: ${state.lastArticleTitle.isEmpty ? '—' : state.lastArticleTitle}'),
-              ]),
-            ),
-          ),
+          _StatsCard(total: state.totalRead, today: state.todayRead, favs: state.favorites.length, streak: state.streak, last: state.lastArticleTitle),
+          const SizedBox(height: 12),
+          _AchievementsCard(total: state.totalRead, favs: state.favorites.length, streak: state.streak),
           const SizedBox(height: 12),
           ListTile(leading: const Icon(Icons.favorite_rounded), title: const Text('Избранное'), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FavoritesScreen()))),
           ListTile(leading: const Icon(Icons.history_rounded), title: const Text('История'), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HistoryScreen()))),
@@ -134,6 +140,7 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
+  static const _userKey = 'wiki_user';
   final _nick = TextEditingController(text: 'Yrysa');
   final _email = TextEditingController();
   final _password = TextEditingController();
@@ -148,19 +155,62 @@ class _AuthScreenState extends State<AuthScreen> {
     super.dispose();
   }
 
-  void _submit({bool guest = false}) {
-    if (!guest && widget.register && _password.text != _confirm.text) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Пароли не совпадают')));
+  Future<Map<String, String>?> _storedUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_userKey);
+    if (raw == null) return null;
+    final data = jsonDecode(raw);
+    if (data is! Map) return null;
+    return data.map((key, value) => MapEntry(key.toString(), value.toString()));
+  }
+
+  Future<void> _submit({bool guest = false}) async {
+    final email = _email.text.trim();
+    final password = _password.text;
+    final nick = _nick.text.trim();
+
+    if (guest) {
+      widget.onDone({
+        'id': 'guest',
+        'nick': 'Гость',
+        'email': 'guest@local.app',
+        'password': '',
+        'status': 'Гостевой режим Wiki Discover',
+        'avatar': '🧠',
+        'createdAt': DateTime.now().toIso8601String(),
+        'guest': 'true',
+      });
+      if (mounted) Navigator.pop(context);
       return;
     }
-    widget.onDone({
-      'nick': guest ? 'Yrysa Guest' : (_nick.text.trim().isEmpty ? 'Yrysa User' : _nick.text.trim()),
-      'email': guest ? 'guest@local.app' : _email.text.trim(),
-      'status': guest ? 'Гость Wiki Discover' : 'Изучаю мир через Wikipedia',
-      'avatar': guest ? '🧠' : '🚀',
-      'guest': guest.toString(),
-    });
-    Navigator.pop(context);
+
+    if (email.isEmpty || !email.contains('@')) return _error('Введите корректный email');
+    if (password.length < 6) return _error('Пароль должен быть минимум 6 символов');
+
+    final saved = await _storedUser();
+    if (widget.register) {
+      if (nick.isEmpty) return _error('Введите ник');
+      if (password != _confirm.text) return _error('Пароли не совпадают');
+      if (saved != null && saved['email'] == email) return _error('Пользователь с таким email уже есть');
+      widget.onDone({
+        'id': DateTime.now().millisecondsSinceEpoch.toString(),
+        'nick': nick,
+        'email': email,
+        'password': password,
+        'status': 'Изучаю мир через Wikipedia',
+        'avatar': '🚀',
+        'createdAt': DateTime.now().toIso8601String(),
+        'guest': 'false',
+      });
+    } else {
+      if (saved == null || saved['email'] != email || saved['password'] != password) return _error('Неверный email или пароль');
+      widget.onDone(saved);
+    }
+    if (mounted) Navigator.pop(context);
+  }
+
+  void _error(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -173,7 +223,7 @@ class _AuthScreenState extends State<AuthScreen> {
         TextField(controller: _password, obscureText: true, decoration: const InputDecoration(labelText: 'Пароль')),
         if (widget.register) TextField(controller: _confirm, obscureText: true, decoration: const InputDecoration(labelText: 'Подтверждение пароля')),
         const SizedBox(height: 18),
-        FilledButton(onPressed: _submit, child: Text(widget.register ? 'Создать аккаунт' : 'Войти')),
+        FilledButton(onPressed: () => _submit(), child: Text(widget.register ? 'Создать аккаунт' : 'Войти')),
         TextButton(onPressed: () => _submit(guest: true), child: const Text('Войти как гость')),
       ]),
     );
@@ -219,12 +269,57 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         const SizedBox(height: 18),
         FilledButton(
           onPressed: () {
-            widget.onDone({...widget.user, 'nick': _nick.text.trim(), 'status': _status.text.trim(), 'avatar': _avatar});
+            widget.onDone({...widget.user, 'nick': _nick.text.trim().isEmpty ? 'Yrysa User' : _nick.text.trim(), 'status': _status.text.trim(), 'avatar': _avatar});
             Navigator.pop(context);
           },
           child: const Text('Сохранить'),
         ),
       ]),
     );
+  }
+}
+
+class _StatsCard extends StatelessWidget {
+  final int total;
+  final int today;
+  final int favs;
+  final int streak;
+  final String last;
+  const _StatsCard({required this.total, required this.today, required this.favs, required this.streak, required this.last});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(elevation: 0, child: Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text('Статистика', style: Theme.of(context).textTheme.titleMedium),
+      const SizedBox(height: 8),
+      Text('Всего прочитано: $total'),
+      Text('Сегодня: $today'),
+      Text('Избранное: $favs'),
+      Text('Серия дней: $streak'),
+      Text('Последняя статья: ${last.isEmpty ? '—' : last}'),
+    ])));
+  }
+}
+
+class _AchievementsCard extends StatelessWidget {
+  final int total;
+  final int favs;
+  final int streak;
+  const _AchievementsCard({required this.total, required this.favs, required this.streak});
+
+  @override
+  Widget build(BuildContext context) {
+    final items = [
+      ('Первая статья', total >= 1),
+      ('Любознательный — 10 статей', total >= 10),
+      ('Исследователь — 50 статей', total >= 50),
+      ('Коллекционер — 10 избранных', favs >= 10),
+      ('Серия — 3 дня подряд', streak >= 3),
+      ('Wiki Master — 100 статей', total >= 100),
+    ];
+    return Card(elevation: 0, child: Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text('Достижения', style: Theme.of(context).textTheme.titleMedium),
+      for (final item in items) ListTile(contentPadding: EdgeInsets.zero, leading: Icon(item.$2 ? Icons.emoji_events_rounded : Icons.lock_outline_rounded), title: Text(item.$1)),
+    ])));
   }
 }
