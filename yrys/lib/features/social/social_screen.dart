@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../app/wiki_state_scope.dart';
 import '../../data/models/summary.dart';
 import '../article/presentation/open_article_detail.dart';
+import 'social_storage.dart';
 
 class SocialScreen extends StatefulWidget {
   const SocialScreen({super.key});
@@ -32,15 +33,13 @@ class _SocialScreenState extends State<SocialScreen> {
   }
 
   Future<void> _loadFriends() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getStringList('wiki_friends') ?? const <String>[];
-    final loaded = raw.map((item) => jsonDecode(item)).whereType<Map>().map(_stringMap).toList();
+    final loaded = await SocialStorage.loadFriends();
     if (loaded.isEmpty) {
       loaded.addAll([
         _friend('Aruzhan', 'Любит космос', '🚀', ['Космос', 'Наука']),
         _friend('Dias', 'Читает IT-статьи', '💻', ['IT', 'Игры']),
       ]);
-      await prefs.setStringList('wiki_friends', loaded.map(jsonEncode).toList());
+      await SocialStorage.saveFriends(loaded);
     }
     if (mounted) setState(() => _friends.addAll(loaded));
   }
@@ -57,13 +56,6 @@ class _SocialScreenState extends State<SocialScreen> {
     };
   }
 
-  Map<String, String> _stringMap(Map item) => item.map((key, value) => MapEntry(key.toString(), value.toString()));
-
-  Future<void> _saveFriends() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList('wiki_friends', _friends.map(jsonEncode).toList());
-  }
-
   Future<void> _addFriend() async {
     final name = _friendController.text.trim();
     if (name.isEmpty) return;
@@ -71,12 +63,12 @@ class _SocialScreenState extends State<SocialScreen> {
       _friends.insert(0, _friend(name, 'Новый друг Wiki Discover', '🌍', ['История', 'Космос']));
       _friendController.clear();
     });
-    await _saveFriends();
+    await SocialStorage.saveFriends(_friends);
   }
 
   Future<void> _removeFriend(Map<String, String> friend) async {
     setState(() => _friends.removeWhere((item) => item['id'] == friend['id']));
-    await _saveFriends();
+    await SocialStorage.saveFriends(_friends);
   }
 
   void _openFriend(Map<String, String> friend) {
@@ -206,8 +198,7 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final List<Map<String, String>> _messages = <Map<String, String>>[];
-  String get _friendId => widget.friend['id'] ?? widget.friend['nick'] ?? 'friend';
-  String get _key => 'chat_$_friendId';
+  String get _key => SocialStorage.chatKey(widget.friend);
 
   @override
   void initState() {
@@ -226,29 +217,21 @@ class _ChatScreenState extends State<ChatScreen> {
     final raw = prefs.getStringList(_key) ?? const <String>[];
     final loaded = raw.map((e) => jsonDecode(e)).whereType<Map>().map((item) => item.map((key, value) => MapEntry(key.toString(), value.toString()))).toList();
     if (widget.initialArticle != null && loaded.where((m) => m['articleUrl'] == widget.initialArticle!.url).isEmpty) {
-      loaded.add(_articleMessage(widget.initialArticle!));
-      await prefs.setStringList(_key, loaded.map(jsonEncode).toList());
+      await SocialStorage.sendArticleToFriend(friend: widget.friend, article: widget.initialArticle!);
+      final updated = prefs.getStringList(_key) ?? const <String>[];
+      loaded
+        ..clear()
+        ..addAll(updated.map((e) => jsonDecode(e)).whereType<Map>().map((item) => item.map((key, value) => MapEntry(key.toString(), value.toString()))));
     }
     if (mounted) setState(() => _messages.addAll(loaded));
   }
 
-  Map<String, String> _baseMessage(String type) => {
-        'id': DateTime.now().microsecondsSinceEpoch.toString(),
-        'senderId': 'me',
-        'type': type,
-        'createdAt': DateTime.now().toIso8601String(),
-        'time': TimeOfDay.now().format(context),
-        'isRead': 'true',
-      };
-
-  Map<String, String> _articleMessage(Summary article) => {
-        ..._baseMessage('article'),
-        'text': 'Посмотри интересную статью',
-        'articleTitle': article.titles.normalized,
-        'articleDescription': article.description ?? article.extract,
-        'articleImage': article.imageUrl ?? '',
-        'articleUrl': article.url,
-      };
+  Map<String, String> _baseMessage(String type) {
+    final now = DateTime.now();
+    final h = now.hour.toString().padLeft(2, '0');
+    final m = now.minute.toString().padLeft(2, '0');
+    return {'id': now.microsecondsSinceEpoch.toString(), 'senderId': 'me', 'type': type, 'createdAt': now.toIso8601String(), 'time': '$h:$m', 'isRead': 'true'};
+  }
 
   Future<void> _save() async {
     final prefs = await SharedPreferences.getInstance();
@@ -263,6 +246,15 @@ class _ChatScreenState extends State<ChatScreen> {
       _controller.clear();
     });
     await _save();
+  }
+
+  Summary _articleFromMessage(Map<String, String> item) {
+    return Summary.fromStorage({
+      'titles': {'canonical': item['articleTitle'], 'normalized': item['articleTitle'], 'display': item['articleTitle']},
+      'extract': item['articleDescription'],
+      'url': item['articleUrl'],
+      'thumbnail': item['articleImage']?.isEmpty == true ? null : {'source': item['articleImage'], 'width': 0, 'height': 0},
+    });
   }
 
   @override
@@ -284,19 +276,9 @@ class _ChatScreenState extends State<ChatScreen> {
                 margin: const EdgeInsets.only(bottom: 10),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer, borderRadius: BorderRadius.circular(18)),
-                child: isArticle ? _ArticleMessage(item: item, onSave: () {
-                  final article = Summary.fromStorage({
-                    'titles': {'canonical': item['articleTitle'], 'normalized': item['articleTitle'], 'display': item['articleTitle']},
-                    'extract': item['articleDescription'],
-                    'url': item['articleUrl'],
-                    'thumbnail': item['articleImage']?.isEmpty == true ? null : {'source': item['articleImage'], 'width': 0, 'height': 0},
-                  });
-                  state.toggleFavorite(article);
-                }) : Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                  Text(item['text'] ?? ''),
-                  const SizedBox(height: 4),
-                  Text(item['time'] ?? '', style: Theme.of(context).textTheme.labelSmall),
-                ]),
+                child: isArticle
+                    ? _ArticleMessage(item: item, onSave: () => state.toggleFavorite(_articleFromMessage(item)), onOpen: () => openArticleDetail(context, _articleFromMessage(item)))
+                    : Column(crossAxisAlignment: CrossAxisAlignment.end, children: [Text(item['text'] ?? ''), const SizedBox(height: 4), Text(item['time'] ?? '', style: Theme.of(context).textTheme.labelSmall)]),
               ),
             );
           },
@@ -313,7 +295,8 @@ class _ChatScreenState extends State<ChatScreen> {
 class _ArticleMessage extends StatelessWidget {
   final Map<String, String> item;
   final VoidCallback onSave;
-  const _ArticleMessage({required this.item, required this.onSave});
+  final VoidCallback onOpen;
+  const _ArticleMessage({required this.item, required this.onSave, required this.onOpen});
   @override
   Widget build(BuildContext context) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -323,7 +306,7 @@ class _ArticleMessage extends StatelessWidget {
       const SizedBox(height: 8),
       Row(children: [
         TextButton(onPressed: onSave, child: const Text('Сохранить')),
-        TextButton(onPressed: () {}, child: const Text('Открыть')),
+        TextButton(onPressed: onOpen, child: const Text('Открыть')),
       ]),
       Align(alignment: Alignment.centerRight, child: Text(item['time'] ?? '', style: Theme.of(context).textTheme.labelSmall)),
     ]);
@@ -335,6 +318,7 @@ class _RecommendationsTab extends StatelessWidget {
   const _RecommendationsTab({required this.friends});
   @override
   Widget build(BuildContext context) {
+    final state = WikiStateScope.of(context);
     return FutureBuilder<List<Map<String, String>>>(
       future: _loadRecommendations(friends),
       builder: (context, snapshot) {
@@ -346,6 +330,21 @@ class _RecommendationsTab extends StatelessWidget {
               leading: const CircleAvatar(child: Icon(Icons.recommend_rounded)),
               title: Text(item['articleTitle'] ?? 'Статья'),
               subtitle: Text('Отправил: ${item['friend'] ?? 'Друг'}'),
+              onTap: () => openArticleDetail(context, Summary.fromStorage({
+                'titles': {'canonical': item['articleTitle'], 'normalized': item['articleTitle'], 'display': item['articleTitle']},
+                'extract': item['articleDescription'],
+                'url': item['articleUrl'],
+                'thumbnail': item['articleImage']?.isEmpty == true ? null : {'source': item['articleImage'], 'width': 0, 'height': 0},
+              })),
+              trailing: IconButton(
+                icon: const Icon(Icons.favorite_border_rounded),
+                onPressed: () => state.toggleFavorite(Summary.fromStorage({
+                  'titles': {'canonical': item['articleTitle'], 'normalized': item['articleTitle'], 'display': item['articleTitle']},
+                  'extract': item['articleDescription'],
+                  'url': item['articleUrl'],
+                  'thumbnail': item['articleImage']?.isEmpty == true ? null : {'source': item['articleImage'], 'width': 0, 'height': 0},
+                })),
+              ),
             )),
         ]);
       },
@@ -356,7 +355,7 @@ class _RecommendationsTab extends StatelessWidget {
     final prefs = await SharedPreferences.getInstance();
     final result = <Map<String, String>>[];
     for (final friend in friends) {
-      final key = 'chat_${friend['id'] ?? friend['nick']}';
+      final key = SocialStorage.chatKey(friend);
       final raw = prefs.getStringList(key) ?? const <String>[];
       for (final item in raw.map((e) => jsonDecode(e)).whereType<Map>()) {
         final map = item.map((key, value) => MapEntry(key.toString(), value.toString()));
