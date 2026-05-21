@@ -35,31 +35,28 @@ class ArticleContent extends StatelessWidget {
           padding: EdgeInsets.fromLTRB(horizontalPadding, 18, horizontalPadding, 32),
           children: [
             if (!readingMode) ...[
-              _CleanHeader(onMenu: onMenu),
+              const _CleanHeader(),
               const SizedBox(height: 14),
               _Categories(categories: categories, onCategory: onCategory),
               const SizedBox(height: 18),
             ],
             ArticleCard(article: article, fontSize: readingFontSize, compact: readingMode),
             const SizedBox(height: 16),
-            if (!readingMode)
-              Row(children: [
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: onNext,
-                    icon: const Icon(Icons.shuffle_rounded),
-                    label: const Text('Следующая статья'),
-                  ),
+            Row(children: [
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: onNext,
+                  icon: const Icon(Icons.shuffle_rounded),
+                  label: const Text('Следующая статья'),
                 ),
-                const SizedBox(width: 10),
-                IconButton.filledTonal(onPressed: onMenu, icon: const Icon(Icons.more_horiz_rounded)),
-              ])
-            else
-              FilledButton.tonalIcon(
+              ),
+              const SizedBox(width: 10),
+              IconButton.filledTonal(
+                tooltip: 'Действия',
                 onPressed: onMenu,
                 icon: const Icon(Icons.more_horiz_rounded),
-                label: const Text('Действия'),
               ),
+            ]),
           ],
         );
       },
@@ -68,8 +65,7 @@ class ArticleContent extends StatelessWidget {
 }
 
 class _CleanHeader extends StatelessWidget {
-  final VoidCallback onMenu;
-  const _CleanHeader({required this.onMenu});
+  const _CleanHeader();
 
   @override
   Widget build(BuildContext context) {
@@ -84,8 +80,7 @@ class _CleanHeader extends StatelessWidget {
       child: Row(children: [
         const Icon(Icons.auto_stories_rounded),
         const SizedBox(width: 10),
-        Expanded(child: Text('Wiki Discover', style: Theme.of(context).textTheme.titleMedium)),
-        IconButton(onPressed: onMenu, icon: const Icon(Icons.more_vert_rounded)),
+        Expanded(child: Text('Yrysa Wiki Reader', style: Theme.of(context).textTheme.titleMedium)),
       ]),
     );
   }
