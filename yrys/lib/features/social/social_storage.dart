@@ -1,7 +1,6 @@
 // made by Yrysa
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/models/summary.dart';
@@ -21,6 +20,11 @@ class SocialStorage {
     await prefs.setStringList(friendsKey, friends.map(jsonEncode).toList());
   }
 
+  static Future<int> sentArticlesCount() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(sentArticlesKey) ?? 0;
+  }
+
   static Future<void> sendArticleToFriend({required Map<String, String> friend, required Summary article}) async {
     final prefs = await SharedPreferences.getInstance();
     final key = chatKey(friend);
@@ -36,7 +40,7 @@ class SocialStorage {
       'articleImage': article.imageUrl ?? '',
       'articleUrl': article.url,
       'createdAt': now.toIso8601String(),
-      'time': TimeOfDay.now().format(_FakeBuildContext()),
+      'time': _time(now),
       'isRead': 'true',
     };
     messages.add(jsonEncode(message));
@@ -47,9 +51,10 @@ class SocialStorage {
   static String chatKey(Map<String, String> friend) => 'chat_${friend['id'] ?? friend['nick'] ?? 'friend'}';
 
   static Map<String, String> _stringMap(Map item) => item.map((key, value) => MapEntry(key.toString(), value.toString()));
-}
 
-class _FakeBuildContext implements BuildContext {
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  static String _time(DateTime value) {
+    final h = value.hour.toString().padLeft(2, '0');
+    final m = value.minute.toString().padLeft(2, '0');
+    return '$h:$m';
+  }
 }
